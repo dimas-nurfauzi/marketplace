@@ -19,6 +19,11 @@ public class User {
     private String fullName;
     private String email;
     private String password;
+
     @Column(name = "created_at")
-    private LocalDateTime createTime;
+    private LocalDateTime createdAt;
+    @PrePersist
+    public void prePersist() {
+        this.createdAt = LocalDateTime.now();
+    }
 }
