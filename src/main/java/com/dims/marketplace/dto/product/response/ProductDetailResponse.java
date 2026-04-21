@@ -1,5 +1,6 @@
 package com.dims.marketplace.dto.product.response;
 
+import com.dims.marketplace.dto.enums.Category;
 import com.dims.marketplace.dto.product.variant.VariantResponse;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -15,6 +16,7 @@ public class ProductDetailResponse {
     private UUID userId;
     private String name;
     private String description;
+    private Category category;
     private LocalDateTime createdAt;
     private List<VariantResponse> variants;
 }

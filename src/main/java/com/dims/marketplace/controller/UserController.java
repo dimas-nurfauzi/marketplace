@@ -2,6 +2,7 @@ package com.dims.marketplace.controller;
 
 import com.dims.marketplace.dto.ApiResponse;
 import com.dims.marketplace.dto.enums.Role;
+import com.dims.marketplace.dto.mapper.UserMapper;
 import com.dims.marketplace.dto.user.UserRequest;
 import com.dims.marketplace.dto.user.UserResponse;
 import com.dims.marketplace.dto.user.update.UserUpdateRequest;
@@ -16,153 +17,92 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
 import java.util.UUID;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/user")
+@RequestMapping("/api/users")
 public class UserController {
+
     private final UserService userService;
 
-    @PostMapping("/create")
+    @PostMapping
     public ResponseEntity<ApiResponse<UserResponse>> createUser(
             @Valid @RequestBody UserRequest request) {
 
         User user = userService.createUser(request);
 
-        UserResponse userResponse = new UserResponse(
-                user.getId(),
-                user.getFullName(),
-                user.getEmail(),
-                user.getRole().name(),
-                user.getCreatedAt()
-        );
-
-        ApiResponse<UserResponse> response = new ApiResponse<>(
-                HttpStatus.CREATED.value(),
-                "User created successfully",
-                userResponse
-        );
-
-        return new ResponseEntity<>(response, HttpStatus.CREATED);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(new ApiResponse<>(
+                        HttpStatus.CREATED.value(),
+                        "User created successfully",
+                        UserMapper.toResponse(user)
+                ));
     }
 
+    // ✅ GET ALL + PAGINATION + FILTER ROLE
     @GetMapping
-    public ResponseEntity<ApiResponse<Page<UserResponse>>> getAllUsers(
+    public ResponseEntity<ApiResponse<Page<UserResponse>>> getUsers(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) Role role) {
 
         Pageable pageable = PageRequest.of(page, size);
 
-        Page<User> userPage = userService.getAllUsers(pageable);
+        Page<User> users;
 
-        Page<UserResponse> responsePage = userPage.map(user -> new UserResponse(
-                user.getId(),
-                user.getFullName(),
-                user.getEmail(),
-                user.getRole().name(),
-                user.getCreatedAt()
-        ));
+        if (role != null) {
+            users = userService.getUsersByRole(role, pageable);
+        } else {
+            users = userService.getAllUsers(pageable);
+        }
 
-        ApiResponse<Page<UserResponse>> response = new ApiResponse<>(
-                HttpStatus.OK.value(),
-                "Success",
-                responsePage
-        );
+        Page<UserResponse> response = users.map(UserMapper::toResponse);
 
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(new ApiResponse<>(200, "Success", response));
     }
 
-    @GetMapping("/detail/{id}")
-    public ResponseEntity<ApiResponse<UserResponse>> getUserById(@PathVariable UUID id) {
+    // ✅ GET BY ID
+    @GetMapping("/{id}")
+    public ResponseEntity<ApiResponse<UserResponse>> getById(@PathVariable UUID id) {
 
         User user = userService.getUserById(id);
 
-        UserResponse userResponse = new UserResponse(
-                user.getId(),
-                user.getFullName(),
-                user.getEmail(),
-                user.getRole().name(),
-                user.getCreatedAt()
+        return ResponseEntity.ok(
+                new ApiResponse<>(200, "Success", UserMapper.toResponse(user))
         );
-
-        ApiResponse<UserResponse> response = new ApiResponse<>(
-                HttpStatus.OK.value(),
-                "Success",
-                userResponse
-        );
-
-        return ResponseEntity.ok(response);
     }
 
-    @GetMapping("/email")
-    public ResponseEntity<ApiResponse<UserResponse>> getUserByEmail(@RequestParam String email) {
+    // ✅ GET BY EMAIL (SINGLE RESOURCE)
+    @GetMapping("/by-email")
+    public ResponseEntity<ApiResponse<UserResponse>> getByEmail(@RequestParam String email) {
+
         User user = userService.getUserByEmail(email);
-        UserResponse userResponse = new UserResponse(
-                user.getId(),
-                user.getFullName(),
-                user.getEmail(),
-                user.getRole().name(),
-                user.getCreatedAt()
+
+        return ResponseEntity.ok(
+                new ApiResponse<>(200, "Success", UserMapper.toResponse(user))
         );
-
-        ApiResponse<UserResponse> response = new ApiResponse<>(
-                HttpStatus.OK.value(),
-                "Success",
-                userResponse
-        );
-        return ResponseEntity.ok(response);
-    }
-
-    @GetMapping("/role/{role}")
-    public ResponseEntity<ApiResponse<List<UserResponse>>> getUsersByRole(@PathVariable Role role) {
-        List<User> users = userService.getUsersByRole(role);
-
-        List<UserResponse> userResponses = users.stream()
-                .map(user -> new UserResponse(
-                        user.getId(),
-                        user.getFullName(),
-                        user.getEmail(),
-                        user.getRole().toString(),
-                        user.getCreatedAt()
-                ))
-                .toList();
-
-        ApiResponse<List<UserResponse>> response = new ApiResponse<>(
-                HttpStatus.OK.value(),
-                "Success",
-                userResponses
-        );
-        return ResponseEntity.ok(response);
     }
 
     @PatchMapping("/{id}")
-    public ResponseEntity<ApiResponse<UserResponse>> updateUser (@PathVariable UUID id, @Valid @RequestBody UserUpdateRequest request) {
+    public ResponseEntity<ApiResponse<UserResponse>> updateUser(
+            @PathVariable UUID id,
+            @Valid @RequestBody UserUpdateRequest request) {
+
         User user = userService.updateUser(id, request);
-        UserResponse userResponse = new UserResponse(
-                user.getId(),
-                user.getFullName(),
-                user.getEmail(),
-                user.getRole().name(),
-                user.getCreatedAt()
-        );
 
-        ApiResponse<UserResponse> response = new ApiResponse<>(
-                HttpStatus.OK.value(),
-                "User has been update!",
-                userResponse
+        return ResponseEntity.ok(
+                new ApiResponse<>(200, "User updated successfully", UserMapper.toResponse(user))
         );
-
-        return ResponseEntity.ok(response);
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteUser(
-            @PathVariable UUID id){
+    public ResponseEntity<ApiResponse<Void>> deleteUser(@PathVariable UUID id) {
 
         userService.deleteUser(id);
 
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.ok(
+                new ApiResponse<>(200, "User deleted successfully", null)
+        );
     }
 }

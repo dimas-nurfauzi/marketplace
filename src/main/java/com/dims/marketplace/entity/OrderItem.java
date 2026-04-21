@@ -17,14 +17,23 @@ public class OrderItem {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "order_id")
     private Order order;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "product_variant_id")
     private Variant variant;
+
     private String productName;
+
     private String variantName;
+
     private BigDecimal price;
+
+    @Column(name = "sub_total")
+    private BigDecimal subtotal;
+
     private Integer quantity;
 }

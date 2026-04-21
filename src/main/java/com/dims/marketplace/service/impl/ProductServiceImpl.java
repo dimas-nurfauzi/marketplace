@@ -1,31 +1,33 @@
 package com.dims.marketplace.service.impl;
 
+import com.dims.marketplace.dto.enums.Category;
+import com.dims.marketplace.dto.enums.Role;
+import com.dims.marketplace.dto.mapper.ProductMapper;
 import com.dims.marketplace.dto.product.create.ProductRequest;
 import com.dims.marketplace.dto.product.response.ProductDetailResponse;
 import com.dims.marketplace.dto.product.response.ProductListResponse;
-import com.dims.marketplace.dto.product.response.ProductResponse;
 import com.dims.marketplace.dto.product.update.UpdateProductRequest;
 import com.dims.marketplace.dto.product.variant.VariantResponse;
 import com.dims.marketplace.entity.Product;
 import com.dims.marketplace.entity.Variant;
 import com.dims.marketplace.entity.User;
-import com.dims.marketplace.exceptions.DuplicateException;
 import com.dims.marketplace.exceptions.NotFoundException;
+import com.dims.marketplace.exceptions.UnauthorizedException;
 import com.dims.marketplace.repository.ProductRepository;
-import com.dims.marketplace.repository.ProductVariantRepository;
 import com.dims.marketplace.service.inter.ProductService;
 import com.dims.marketplace.service.inter.UserService;
+import com.dims.marketplace.specification.ProductSpecification;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -33,26 +35,22 @@ import java.util.UUID;
 public class ProductServiceImpl implements ProductService {
 
     private final ProductRepository productRepository;
-    private final ProductVariantRepository variantRepository;
     private final UserService userService;
 
     @Override
     public Product createProduct(ProductRequest request) {
 
-        User user = userService.getUserById(request.getUserId());
+        User seller = userService.getUserById(request.getSellerId());
 
-        Set<String> skuSet = new HashSet<>();
-
-        for (var v : request.getVariants()) {
-            if (!skuSet.add(v.getSku())) {
-                throw new DuplicateException("Duplicate SKU in request: " + v.getSku());
-            }
+        if (seller.getRole() != Role.SELLER) {
+            throw new UnauthorizedException("User must be SELLER to create product");
         }
 
         Product product = new Product();
         product.setName(request.getName());
         product.setDescription(request.getDescription());
-        product.setCreatedBy(user);
+        product.setSeller(seller);
+        product.setCategory(request.getCategory());
 
         List<Variant> variants = request.getVariants()
                 .stream()
@@ -65,20 +63,19 @@ public class ProductServiceImpl implements ProductService {
                     variant.setProduct(product);
                     return variant;
                 })
-                .toList();
+                .collect(Collectors.toList());
 
         product.setVariants(variants);
 
         return productRepository.save(product);
     }
 
-    @Override
+    @Override // adding variant is included here
     public Product updateProduct(UUID id, UpdateProductRequest request) {
 
         Product product = productRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Product not found with id: " + id));
+                .orElseThrow(() -> new NotFoundException("Product not found"));
 
-        // PATCH logic
         if (request.getName() != null && !request.getName().isBlank()) {
             product.setName(request.getName());
         }
@@ -87,9 +84,11 @@ public class ProductServiceImpl implements ProductService {
             product.setDescription(request.getDescription());
         }
 
-        // 🔥 Replace variant (simple version dulu)
-        if (request.getVariants() != null) {
+        if (request.getCategory() != null) {
+            product.setCategory(request.getCategory());
+        }
 
+        if (request.getVariants() != null) {
             List<Variant> variants = request.getVariants()
                     .stream()
                     .map(v -> {
@@ -101,7 +100,7 @@ public class ProductServiceImpl implements ProductService {
                         variant.setProduct(product);
                         return variant;
                     })
-                    .toList();
+                    .collect(Collectors.toList());
 
             product.setVariants(variants);
         }
@@ -110,58 +109,62 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
-    public Page<ProductListResponse> getAllProducts(Pageable pageable) {
+    public Page<ProductListResponse> getAllProducts(
+            BigDecimal minPrice,
+            BigDecimal maxPrice,
+            Category category,
+            String name,
+            UUID sellerId,
+            Pageable pageable) {
 
-        return productRepository.findAll(pageable)
-                .map(product -> {
+        Specification<Product> spec =
+                ProductSpecification.hasMinPrice(minPrice)
+                .and(ProductSpecification.hasMaxPrice(maxPrice))
+                .and(ProductSpecification.hasCategory(category))
+                .and(ProductSpecification.hasName(name))
+                .and(ProductSpecification.hasSeller(sellerId));
 
-                    BigDecimal minPrice = product.getVariants().stream()
-                            .map(Variant::getPrice)
-                            .min(BigDecimal::compareTo)
-                            .orElse(BigDecimal.ZERO);
+        Page<Product> products = productRepository.findAll((root, query, cb) -> {
+            if (query != null) {
+                query.distinct(true);
+            }
+            return spec.toPredicate(root, query, cb);
+        }, pageable);
 
-                    return new ProductListResponse(
-                            product.getId(),
-                            product.getName(),
-                            product.getDescription(),
-                            minPrice,
-                            product.getCreatedAt()
-                    );
-                });
+        return products.map(ProductMapper::toListResponse);
     }
 
     @Override
     public ProductDetailResponse getProductById(UUID id) {
 
         Product product = productRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Product not found with id: " + id));
-
-        List<VariantResponse> variants = product.getVariants()
-                .stream()
-                .map(v -> new VariantResponse(
-                        v.getId(),
-                        v.getSku(),
-                        v.getSize(),
-                        v.getPrice(),
-                        v.getStock(),
-                        v.getCreatedAt()
-                ))
-                .toList();
+                .orElseThrow(() -> new NotFoundException("Product not found"));
 
         return new ProductDetailResponse(
                 product.getId(),
-                product.getCreatedBy().getId(),
+                product.getSeller().getId(),
                 product.getName(),
                 product.getDescription(),
+                product.getCategory(),
                 product.getCreatedAt(),
-                variants
+                product.getVariants().stream()
+                        .map(v -> new VariantResponse(
+                                v.getId(),
+                                v.getSku(),
+                                v.getSize(),
+                                v.getPrice(),
+                                v.getStock(),
+                                v.getCreatedAt()
+                        ))
+                        .collect(Collectors.toList())
         );
     }
 
     @Override
     public void deleteProduct(UUID productId) {
+
         Product product = productRepository.findById(productId)
-                .orElseThrow(() -> new NotFoundException("Product not found with id: " + productId));
+                .orElseThrow(() -> new NotFoundException("Product not found"));
 
         productRepository.delete(product);
     }

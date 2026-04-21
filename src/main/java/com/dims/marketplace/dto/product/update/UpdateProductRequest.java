@@ -1,5 +1,6 @@
 package com.dims.marketplace.dto.product.update;
 
+import com.dims.marketplace.dto.enums.Category;
 import com.dims.marketplace.dto.product.create.VariantRequest;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -17,5 +18,6 @@ public class UpdateProductRequest {
     private UUID productId;
     private String name;
     private String description;
+    private Category category;
     private List<VariantRequest> variants;
 }

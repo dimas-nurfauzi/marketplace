@@ -1,15 +1,14 @@
 package com.dims.marketplace.controller;
 
 import com.dims.marketplace.dto.ApiResponse;
+import com.dims.marketplace.dto.enums.Category;
+import com.dims.marketplace.dto.mapper.ProductMapper;
 import com.dims.marketplace.dto.product.create.ProductRequest;
 import com.dims.marketplace.dto.product.response.ProductDetailResponse;
 import com.dims.marketplace.dto.product.response.ProductListResponse;
 import com.dims.marketplace.dto.product.response.ProductResponse;
 import com.dims.marketplace.dto.product.update.UpdateProductRequest;
-import com.dims.marketplace.dto.product.variant.VariantResponse;
 import com.dims.marketplace.entity.Product;
-import com.dims.marketplace.entity.User;
-import com.dims.marketplace.entity.Variant;
 import com.dims.marketplace.service.inter.ProductService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -20,60 +19,50 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
-import java.util.List;
 import java.util.UUID;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/products")
+@RequestMapping("/api/products")
 public class ProductController {
 
     private final ProductService productService;
 
     @PostMapping
-    public ResponseEntity<ApiResponse<ProductResponse>> create(@RequestBody ProductRequest request) {
+    public ResponseEntity<ApiResponse<ProductResponse>> create(
+            @RequestBody ProductRequest request) {
 
         Product product = productService.createProduct(request);
 
-        List<VariantResponse> variants = product.getVariants()
-                .stream()
-                .map(v -> new VariantResponse(
-                        v.getId(),
-                        v.getSku(),
-                        v.getSize(),
-                        v.getPrice(),
-                        v.getStock(),
-                        v.getCreatedAt()
-                ))
-                .toList();
-
-        BigDecimal minPrice = variants.stream()
-                .map(VariantResponse::getPrice)
-                .min(BigDecimal::compareTo)
-                .orElse(BigDecimal.ZERO);
-
-        ProductResponse productResponse = new ProductResponse(
-                product.getId(),
-                product.getCreatedBy().getId(),
-                product.getName(),
-                product.getDescription(),
-                minPrice,
-                product.getCreatedAt(),
-                variants
-        );
-
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(new ApiResponse<>(201, "Product created successfully", productResponse));
+                .body(new ApiResponse<>(
+                        201,
+                        "Product created successfully",
+                        ProductMapper.toResponse(product)
+                ));
     }
 
     @GetMapping
     public ResponseEntity<ApiResponse<Page<ProductListResponse>>> getAllProducts(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) BigDecimal minPrice,
+            @RequestParam(required = false) BigDecimal maxPrice,
+            @RequestParam(required = false) Category category,
+            @RequestParam(required = false) String name,
+            @RequestParam(required = false) UUID sellerId
+    ) {
 
         Pageable pageable = PageRequest.of(page, size);
 
-        Page<ProductListResponse> data = productService.getAllProducts(pageable);
+        Page<ProductListResponse> data = productService.getAllProducts(
+                minPrice,
+                maxPrice,
+                category,
+                name,
+                sellerId,
+                pageable
+        );
 
         return ResponseEntity.ok(new ApiResponse<>(200, "Success", data));
     }
@@ -81,9 +70,9 @@ public class ProductController {
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<ProductDetailResponse>> getById(@PathVariable UUID id) {
 
-        ProductDetailResponse data = productService.getProductById(id);
-
-        return ResponseEntity.ok(new ApiResponse<>(200, "Success", data));
+        return ResponseEntity.ok(
+                new ApiResponse<>(200, "Success", productService.getProductById(id))
+        );
     }
 
     @PatchMapping("/{id}")
@@ -93,35 +82,12 @@ public class ProductController {
 
         Product product = productService.updateProduct(id, request);
 
-        List<VariantResponse> variants = product.getVariants()
-                .stream()
-                .map(v -> new VariantResponse(
-                        v.getId(),
-                        v.getSku(),
-                        v.getSize(),
-                        v.getPrice(),
-                        v.getStock(),
-                        v.getCreatedAt()
-                ))
-                .toList();
-
-        BigDecimal minPrice = variants.stream()
-                .map(VariantResponse::getPrice)
-                .min(BigDecimal::compareTo)
-                .orElse(BigDecimal.ZERO);
-
-        ProductResponse productResponse = new ProductResponse(
-                product.getId(),
-                product.getCreatedBy().getId(),
-                product.getName(),
-                product.getDescription(),
-                minPrice,
-                product.getCreatedAt(),
-                variants
+        return ResponseEntity.ok(
+                new ApiResponse<>(200, "Product updated successfully",
+                        ProductMapper.toResponse(product))
         );
-
-        return ResponseEntity.ok(new ApiResponse<>(200, "Product updated successfully", productResponse));
     }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable UUID id) {
 

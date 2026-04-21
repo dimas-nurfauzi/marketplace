@@ -18,14 +18,18 @@ public class CartItem {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "cart_id", nullable = false)
     private Cart cart;
+
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "product_variant_id")
+    @JoinColumn(name = "product_variant_id", nullable = false)
     private Variant variant;
+
     @Column(nullable = false)
     private Integer quantity;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 }

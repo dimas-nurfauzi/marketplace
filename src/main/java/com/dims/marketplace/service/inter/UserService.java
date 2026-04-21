@@ -15,7 +15,7 @@ public interface UserService {
 
     Page<User> getAllUsers(Pageable pageable);
 
-    List<User> getUsersByRole(Role role);
+    Page<User> getUsersByRole(Role role, Pageable pageable);
 
     User getUserById(UUID id);
 

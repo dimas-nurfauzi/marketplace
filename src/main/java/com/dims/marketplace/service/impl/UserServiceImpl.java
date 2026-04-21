@@ -44,10 +44,9 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public List<User> getUsersByRole(Role role) {
-        return userRepository.findByRole(role);
+    public Page<User> getUsersByRole(Role role, Pageable pageable) {
+        return userRepository.findByRole(role, pageable);
     }
-
     @Override
     public User getUserById(UUID id) {
         return userRepository.findById(id).orElseThrow( () -> new NotFoundException("User not found"));

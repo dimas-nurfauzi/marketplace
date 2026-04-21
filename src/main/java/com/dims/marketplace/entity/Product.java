@@ -1,5 +1,6 @@
 package com.dims.marketplace.entity;
 
+import com.dims.marketplace.dto.enums.Category;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
@@ -29,11 +30,15 @@ public class Product {
     private LocalDateTime updatedAt;
 
     @ManyToOne
-    @JoinColumn(name = "created_by", nullable = false)
-    private User createdBy;
+    @JoinColumn(name = "seller_id", nullable = false)
+    private User seller;
 
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL)
     private List<Variant> variants;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private Category category;
 
     @PrePersist
     public void prePersist() {

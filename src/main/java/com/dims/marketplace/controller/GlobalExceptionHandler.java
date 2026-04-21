@@ -29,13 +29,27 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ApiResponse<Object>> handleDataIntegrity(DataIntegrityViolationException ex) {
 
+        HttpStatus status = HttpStatus.BAD_REQUEST;
+        String message = "Invalid data";
+
+        Throwable cause = ex.getCause();
+
+        if (cause instanceof org.hibernate.exception.ConstraintViolationException) {
+            status = HttpStatus.CONFLICT;
+            message = "Data already exists or violates unique constraint";
+        }
+        else if (cause instanceof org.hibernate.PropertyValueException) {
+            status = HttpStatus.BAD_REQUEST;
+            message = "Required field is missing";
+        }
+
         ApiResponse<Object> response = new ApiResponse<>(
-                HttpStatus.CONFLICT.value(),
-                "Duplicate data",
+                status.value(),
+                message,
                 null
         );
 
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+        return ResponseEntity.status(status).body(response);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

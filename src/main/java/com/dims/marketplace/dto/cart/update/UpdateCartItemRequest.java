@@ -16,5 +16,5 @@ public class UpdateCartItemRequest {
     private UUID cartId;
     private UUID productVariantId;
     private UUID quantityId;
-
+    private Integer quantity;
 }

@@ -7,15 +7,15 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Getter
 @AllArgsConstructor
-@NoArgsConstructor
 public class OrderResponse {
-    private UUID userId;
     private UUID orderId;
     private BigDecimal totalPrice;
-    private OrderStatus orderStatus;
+    private String status;
     private LocalDateTime createdAt;
+    private List<OrderItemResponse> items;
 }

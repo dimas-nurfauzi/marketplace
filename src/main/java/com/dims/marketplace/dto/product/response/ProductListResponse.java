@@ -1,5 +1,6 @@
 package com.dims.marketplace.dto.product.response;
 
+import com.dims.marketplace.dto.enums.Category;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
@@ -14,5 +15,6 @@ public class ProductListResponse {
     private String name;
     private String description;
     private BigDecimal minPrice;
+    private Category category;
     private LocalDateTime createdAt;
 }

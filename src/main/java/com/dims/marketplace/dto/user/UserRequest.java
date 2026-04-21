@@ -27,5 +27,6 @@ public class UserRequest {
             regexp = "^(?=.*[A-Za-z])(?=.*\\d)[A-Za-z\\d]{6,}$",
             message = "Password must be at least 6 characters and contain both letters and numbers"
     )
+    @NotBlank(message = "password is required")
     private String password;
 }

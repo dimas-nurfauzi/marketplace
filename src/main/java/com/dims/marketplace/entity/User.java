@@ -40,14 +40,14 @@ public class User {
     private LocalDateTime updatedAt;
 
     // Relasi ke product (one user bisa bikin banyak product)
-    @OneToMany(mappedBy = "createdBy", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "seller", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Product> products;
 
     @PrePersist
     public void prePersist() {
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
-        if (role == null) this.role = Role.USER; // default role
+        if (role == null) this.role = Role.BUYER; // default role
     }
 
     @PreUpdate
