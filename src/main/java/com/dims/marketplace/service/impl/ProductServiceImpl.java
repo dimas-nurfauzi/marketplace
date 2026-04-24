@@ -11,7 +11,7 @@ import com.dims.marketplace.dto.product.variant.VariantResponse;
 import com.dims.marketplace.entity.Product;
 import com.dims.marketplace.entity.Variant;
 import com.dims.marketplace.entity.User;
-import com.dims.marketplace.exceptions.NotFoundException;
+import com.dims.marketplace.exceptions.DataNotFoundException;
 import com.dims.marketplace.exceptions.UnauthorizedException;
 import com.dims.marketplace.repository.ProductRepository;
 import com.dims.marketplace.service.inter.ProductService;
@@ -74,7 +74,7 @@ public class ProductServiceImpl implements ProductService {
     public Product updateProduct(UUID id, UpdateProductRequest request) {
 
         Product product = productRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Product not found"));
+                .orElseThrow(() -> new DataNotFoundException("Product not found"));
 
         if (request.getName() != null && !request.getName().isBlank()) {
             product.setName(request.getName());
@@ -138,7 +138,7 @@ public class ProductServiceImpl implements ProductService {
     public ProductDetailResponse getProductById(UUID id) {
 
         Product product = productRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Product not found"));
+                .orElseThrow(() -> new DataNotFoundException("Product not found"));
 
         return new ProductDetailResponse(
                 product.getId(),
@@ -164,7 +164,7 @@ public class ProductServiceImpl implements ProductService {
     public void deleteProduct(UUID productId) {
 
         Product product = productRepository.findById(productId)
-                .orElseThrow(() -> new NotFoundException("Product not found"));
+                .orElseThrow(() -> new DataNotFoundException("Product not found"));
 
         productRepository.delete(product);
     }

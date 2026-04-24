@@ -2,8 +2,8 @@ package com.dims.marketplace.exceptions;
 
 import org.springframework.http.HttpStatus;
 
-public class NotFoundException extends BaseException {
-    public NotFoundException(String message) {
+public class BadRequestException extends BaseException {
+    public BadRequestException(String message) {
         super(message);
     }
 

@@ -5,7 +5,7 @@ import com.dims.marketplace.dto.user.UserRequest;
 import com.dims.marketplace.dto.user.update.UserUpdateRequest;
 import com.dims.marketplace.entity.User;
 import com.dims.marketplace.exceptions.DuplicateException;
-import com.dims.marketplace.exceptions.NotFoundException;
+import com.dims.marketplace.exceptions.DataNotFoundException;
 import com.dims.marketplace.repository.UserRepository;
 import com.dims.marketplace.service.inter.UserService;
 import lombok.RequiredArgsConstructor;
@@ -14,7 +14,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -49,19 +48,19 @@ public class UserServiceImpl implements UserService {
     }
     @Override
     public User getUserById(UUID id) {
-        return userRepository.findById(id).orElseThrow( () -> new NotFoundException("User not found"));
+        return userRepository.findById(id).orElseThrow( () -> new DataNotFoundException("User not found"));
     }
 
     @Override
     public User getUserByEmail(String email) {
-        return userRepository.findByEmail(email).orElseThrow(()-> new NotFoundException("user with given email cannot be found."));
+        return userRepository.findByEmail(email).orElseThrow(()-> new DataNotFoundException("user with given email cannot be found."));
     }
 
     // need fix: field email bisa kosong ketika di update
     @Override
     public User updateUser (UUID id, UserUpdateRequest request) {
         User user = userRepository.findById(id)
-                .orElseThrow( () -> new NotFoundException("User not found"));
+                .orElseThrow( () -> new DataNotFoundException("User not found"));
         // supaya gak ngetag email sendiri sebagai duplicate
         if (request.getEmail() != null &&
                 !request.getEmail().isBlank() &&
@@ -90,7 +89,7 @@ public class UserServiceImpl implements UserService {
     public void deleteUser(UUID id) {
 
         User user = userRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("User not found"));
+                .orElseThrow(() -> new DataNotFoundException("User not found"));
 
         userRepository.delete(user);
     }

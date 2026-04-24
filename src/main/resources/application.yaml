@@ -1,16 +1,25 @@
 spring:
   application:
     name: ${DB_NAME}
+
   datasource:
     url: jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      minimum-idle: 5
+      maximum-pool-size: 10
+      auto-commit: true
+      transaction-isolation: TRANSACTION_READ_COMMITTED
+
   jpa:
     hibernate:
       ddl-auto: validate
-      show-sql: true
-      properties:
-        hibernate:
-          format_sql: true
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
   flyway:
     enabled: true

@@ -4,7 +4,7 @@ import com.dims.marketplace.dto.product.create.VariantRequest;
 import com.dims.marketplace.dto.product.variant.UpdateVariantRequest;
 import com.dims.marketplace.entity.Product;
 import com.dims.marketplace.entity.Variant;
-import com.dims.marketplace.exceptions.NotFoundException;
+import com.dims.marketplace.exceptions.DataNotFoundException;
 import com.dims.marketplace.repository.ProductRepository;
 import com.dims.marketplace.repository.VariantRepository;
 import com.dims.marketplace.service.inter.VariantService;
@@ -27,7 +27,7 @@ public class VariantServiceImpl implements VariantService {
     public Variant updateVariant(UUID id, UpdateVariantRequest request) {
 
         Variant variant = variantRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Variant not found"));
+                .orElseThrow(() -> new DataNotFoundException("Variant not found"));
 
         if (request.getSku() != null) {
             variant.setSku(request.getSku());
@@ -52,7 +52,7 @@ public class VariantServiceImpl implements VariantService {
     public void deleteVariant(UUID id) {
 
         Variant variant = variantRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Variant not found"));
+                .orElseThrow(() -> new DataNotFoundException("Variant not found"));
 
         variantRepository.delete(variant);
     }
@@ -67,7 +67,7 @@ public class VariantServiceImpl implements VariantService {
     public Variant addVariantToProduct(UUID productId, VariantRequest request) {
 
         Product product = productRepository.findById(productId)
-                .orElseThrow(() -> new NotFoundException("Product not found"));
+                .orElseThrow(() -> new DataNotFoundException("Product not found"));
 
         Variant variant = new Variant();
         variant.setSku(request.getSku());

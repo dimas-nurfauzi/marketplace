@@ -6,7 +6,9 @@ import com.dims.marketplace.entity.Cart;
 import com.dims.marketplace.entity.CartItem;
 import com.dims.marketplace.entity.Variant;
 import com.dims.marketplace.entity.User;
-import com.dims.marketplace.exceptions.NotFoundException;
+import com.dims.marketplace.exceptions.BadRequestException;
+import com.dims.marketplace.exceptions.DataNotFoundException;
+import com.dims.marketplace.exceptions.UnauthorizedException;
 import com.dims.marketplace.repository.CartItemRepository;
 import com.dims.marketplace.repository.CartRepository;
 import com.dims.marketplace.repository.UserRepository;
@@ -36,20 +38,20 @@ public class CartServiceImpl implements CartService {
     public void addToCart(UUID userId, UUID variantId, Integer quantity) {
 
         if (quantity <= 0) {
-            throw new RuntimeException("Quantity must be greater than 0");
+            throw new BadRequestException("Quantity must be greater than 0");
         }
 
         // ambil user
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new NotFoundException("User not found"));
+                .orElseThrow(() -> new DataNotFoundException("User not found"));
 
         // ambil variant
         Variant variant = variantRepository.findById(variantId)
-                .orElseThrow(() -> new NotFoundException("Variant not found"));
+                .orElseThrow(() -> new DataNotFoundException("Variant not found"));
 
-        // cek stock
+        // cek stockr
         if (quantity > variant.getStock()) {
-            throw new RuntimeException("Stock not enough");
+            throw new DataNotFoundException("Stock not enough");
         }
 
         // ambil / create cart
@@ -72,7 +74,7 @@ public class CartServiceImpl implements CartService {
             int newQty = item.getQuantity() + quantity;
 
             if (newQty > variant.getStock()) {
-                throw new RuntimeException("Stock not enough");
+                throw new DataNotFoundException("Stock not enough");
             }
 
             item.setQuantity(newQty);
@@ -96,7 +98,7 @@ public class CartServiceImpl implements CartService {
     public CartResponse getCart(UUID userId) {
 
         Cart cart = cartRepository.findByUserId(userId)
-                .orElseThrow(() -> new RuntimeException("Cart not found"));
+                .orElseThrow(() -> new DataNotFoundException("Cart not found"));
 
         List<CartItemResponse> itemResponses = new ArrayList<>();
 
@@ -137,11 +139,11 @@ public class CartServiceImpl implements CartService {
     public void updateQuantity(UUID cartItemId, Integer quantity) {
 
         if (quantity < 0) {
-            throw new RuntimeException("Quantity cannot be negative");
+            throw new BadRequestException("Quantity cannot be negative");
         }
 
         CartItem item = cartItemRepository.findById(cartItemId)
-                .orElseThrow(() -> new RuntimeException("Cart item not found"));
+                .orElseThrow(() -> new DataNotFoundException("Cart item not found"));
 
         Variant variant = item.getVariant();
 
@@ -153,7 +155,7 @@ public class CartServiceImpl implements CartService {
         }
 
         if (quantity > variant.getStock()) {
-            throw new RuntimeException("Stock not enough");
+            throw new DataNotFoundException("Stock not enough");
         }
 
         item.setQuantity(quantity);
@@ -163,7 +165,7 @@ public class CartServiceImpl implements CartService {
     public void removeItem(UUID cartItemId) {
 
         CartItem item = cartItemRepository.findById(cartItemId)
-                .orElseThrow(() -> new RuntimeException("Cart item not found"));
+                .orElseThrow(() -> new DataNotFoundException("Cart item not found"));
 
         item.getCart().getItems().remove(item);
 
@@ -173,7 +175,7 @@ public class CartServiceImpl implements CartService {
     @Override
     public void clearCart(UUID userId) {
         Cart cart = cartRepository.findByUserId(userId)
-                .orElseThrow(() -> new RuntimeException("Cart not found"));
+                .orElseThrow(() -> new DataNotFoundException("Cart not found"));
 
         cart.getItems().clear();
     }
