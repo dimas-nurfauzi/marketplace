@@ -18,6 +18,8 @@ import com.dims.marketplace.service.inter.ProductService;
 import com.dims.marketplace.service.inter.UserService;
 import com.dims.marketplace.specification.ProductSpecification;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -38,6 +40,7 @@ public class ProductServiceImpl implements ProductService {
     private final UserService userService;
 
     @Override
+    @CacheEvict(value = "products", allEntries = true)
     public Product createProduct(ProductRequest request) {
 
         User seller = userService.getUserById(request.getSellerId());
@@ -71,6 +74,7 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override // adding variant is included here
+    @CacheEvict(value = {"products", "product"}, allEntries = true)
     public Product updateProduct(UUID id, UpdateProductRequest request) {
 
         Product product = productRepository.findById(id)
@@ -109,6 +113,10 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
+    @Cacheable(
+            value = "products",
+            key = "T(String).valueOf(#minPrice) + '-' + T(String).valueOf(#maxPrice) + '-' + #category + '-' + #name + '-' + #sellerId + '-' + #pageable.pageNumber + '-' + #pageable.pageSize"
+    )
     public Page<ProductListResponse> getAllProducts(
             BigDecimal minPrice,
             BigDecimal maxPrice,
@@ -135,6 +143,7 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
+    @Cacheable(value = "product", key = "#id")
     public ProductDetailResponse getProductById(UUID id) {
 
         Product product = productRepository.findById(id)
