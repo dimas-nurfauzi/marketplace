@@ -9,6 +9,7 @@ import com.dims.marketplace.service.inter.VariantService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -64,7 +65,8 @@ public class VariantController {
     @PostMapping("/product/{productId}")
     public ResponseEntity<ApiResponse<VariantResponse>> addVariant(
             @PathVariable UUID productId,
-            @RequestBody VariantRequest request
+            @RequestBody VariantRequest request,
+            Authentication authentication
     ) {
 
         Variant variant = variantService.addVariantToProduct(productId, request);

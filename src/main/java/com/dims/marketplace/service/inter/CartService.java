@@ -1,19 +1,18 @@
 package com.dims.marketplace.service.inter;
 
 import com.dims.marketplace.dto.cart.response.CartResponse;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 
 public interface CartService {
-    void addToCart(UUID userId, UUID variantId, Integer quantity);
 
-    @Transactional(readOnly = true)
-    CartResponse getCart(UUID userId);
+    void addToCart(String email, UUID variantId, Integer quantity);
 
-    void updateQuantity(UUID cartItemId, Integer quantity);
+    CartResponse getCart(String email);
 
-    void removeItem(UUID cartItemId);
+    void updateQuantity(UUID cartItemId, Integer quantity, String email);
 
-    void clearCart(UUID userId);
+    void removeItem(UUID cartItemId, String email);
+
+    void clearCart(String email);
 }

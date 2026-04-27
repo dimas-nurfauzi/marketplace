@@ -6,6 +6,8 @@ import com.dims.marketplace.dto.cart.update.UpdateCartItemRequest;
 import com.dims.marketplace.service.inter.CartService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
@@ -18,12 +20,15 @@ public class CartController {
     private final CartService cartService;
 
     @PostMapping("/items")
+    @PreAuthorize("hasAuthority('BUYER')")
     public ResponseEntity<ApiResponse<Void>> addToCart(
-            @RequestParam UUID userId,
             @RequestParam UUID variantId,
-            @RequestParam Integer quantity) {
+            @RequestParam Integer quantity,
+            Authentication authentication) {
 
-        cartService.addToCart(userId, variantId, quantity);
+        String email = authentication.getName();
+
+        cartService.addToCart(email, variantId, quantity);
 
         return ResponseEntity.ok(
                 new ApiResponse<>(200, "Item added to cart", null)
@@ -31,10 +36,13 @@ public class CartController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAuthority('BUYER')")
     public ResponseEntity<ApiResponse<CartResponse>> getCart(
-            @RequestParam UUID userId) {
+            Authentication authentication) {
 
-        CartResponse response = cartService.getCart(userId);
+        String email = authentication.getName();
+
+        CartResponse response = cartService.getCart(email);
 
         return ResponseEntity.ok(
                 new ApiResponse<>(200, "Success", response)
@@ -42,11 +50,15 @@ public class CartController {
     }
 
     @PatchMapping("/items/{id}")
+    @PreAuthorize("hasAuthority('BUYER')")
     public ResponseEntity<ApiResponse<Void>> updateQuantity(
             @PathVariable UUID id,
-            @RequestBody UpdateCartItemRequest request) {
+            @RequestBody UpdateCartItemRequest request,
+            Authentication authentication) {
 
-        cartService.updateQuantity(id, request.getQuantity());
+        String email = authentication.getName();
+
+        cartService.updateQuantity(id, request.getQuantity(), email);
 
         return ResponseEntity.ok(
                 new ApiResponse<>(200, "Cart updated", null)
@@ -54,12 +66,31 @@ public class CartController {
     }
 
     @DeleteMapping("/items/{id}")
-    public ResponseEntity<ApiResponse<Void>> removeItem(@PathVariable UUID id) {
+    @PreAuthorize("hasAuthority('BUYER')")
+    public ResponseEntity<ApiResponse<Void>> removeItem(
+            @PathVariable UUID id,
+            Authentication authentication) {
 
-        cartService.removeItem(id);
+        String email = authentication.getName();
+
+        cartService.removeItem(id, email);
 
         return ResponseEntity.ok(
                 new ApiResponse<>(200, "Item removed", null)
+        );
+    }
+
+    @DeleteMapping
+    @PreAuthorize("hasAuthority('BUYER')")
+    public ResponseEntity<ApiResponse<Void>> clearCart(
+            Authentication authentication) {
+
+        String email = authentication.getName();
+
+        cartService.clearCart(email);
+
+        return ResponseEntity.ok(
+                new ApiResponse<>(200, "Cart cleared", null)
         );
     }
 }

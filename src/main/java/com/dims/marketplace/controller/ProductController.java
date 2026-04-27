@@ -10,12 +10,15 @@ import com.dims.marketplace.dto.product.response.ProductResponse;
 import com.dims.marketplace.dto.product.update.UpdateProductRequest;
 import com.dims.marketplace.entity.Product;
 import com.dims.marketplace.service.inter.ProductService;
+import jakarta.validation.Valid;
+import org.springframework.security.core.Authentication;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
@@ -29,10 +32,13 @@ public class ProductController {
     private final ProductService productService;
 
     @PostMapping
+    @PreAuthorize("hasAuthority('SELLER')")
     public ResponseEntity<ApiResponse<ProductResponse>> create(
-            @RequestBody ProductRequest request) {
+            @RequestBody @Valid ProductRequest request,
+            Authentication authentication) {
 
-        Product product = productService.createProduct(request);
+        String email = authentication.getName();
+        Product product = productService.createProduct(request, email);
 
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(new ApiResponse<>(
@@ -76,6 +82,7 @@ public class ProductController {
     }
 
     @PatchMapping("/{id}")
+    @PreAuthorize("hasAuthority('SELLER')")
     public ResponseEntity<ApiResponse<ProductResponse>> update(
             @PathVariable UUID id,
             @RequestBody UpdateProductRequest request) {
@@ -89,6 +96,7 @@ public class ProductController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('SELLER')")
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable UUID id) {
 
         productService.deleteProduct(id);

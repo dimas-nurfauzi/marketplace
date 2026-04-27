@@ -14,6 +14,7 @@ import com.dims.marketplace.entity.User;
 import com.dims.marketplace.exceptions.DataNotFoundException;
 import com.dims.marketplace.exceptions.UnauthorizedException;
 import com.dims.marketplace.repository.ProductRepository;
+import com.dims.marketplace.repository.UserRepository;
 import com.dims.marketplace.service.inter.ProductService;
 import com.dims.marketplace.service.inter.UserService;
 import com.dims.marketplace.specification.ProductSpecification;
@@ -37,13 +38,14 @@ import java.util.stream.Collectors;
 public class ProductServiceImpl implements ProductService {
 
     private final ProductRepository productRepository;
-    private final UserService userService;
+    private final UserRepository userRepository;
 
     @Override
     @CacheEvict(value = "products", allEntries = true)
-    public Product createProduct(ProductRequest request) {
+    public Product createProduct(ProductRequest request, String authenticatedEmail) {
 
-        User seller = userService.getUserById(request.getSellerId());
+        User seller = userRepository.findByEmail(authenticatedEmail)
+                .orElseThrow(() -> new DataNotFoundException("Seller not found"));
 
         if (seller.getRole() != Role.SELLER) {
             throw new UnauthorizedException("User must be SELLER to create product");
@@ -170,6 +172,7 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
+    @CacheEvict(value = {"products", "product"}, allEntries = true)
     public void deleteProduct(UUID productId) {
 
         Product product = productRepository.findById(productId)

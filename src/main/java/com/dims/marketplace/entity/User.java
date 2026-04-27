@@ -47,7 +47,6 @@ public class User {
     public void prePersist() {
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
-        if (role == null) this.role = Role.BUYER; // default role
     }
 
     @PreUpdate

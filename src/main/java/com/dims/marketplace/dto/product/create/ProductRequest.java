@@ -18,8 +18,6 @@ import java.util.UUID;
 @NoArgsConstructor
 public class ProductRequest {
 
-    private UUID sellerId;
-
     @NotBlank(message = "Product name is required")
     private String name;
 

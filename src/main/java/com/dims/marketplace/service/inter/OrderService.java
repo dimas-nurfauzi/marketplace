@@ -8,11 +8,9 @@ import java.util.UUID;
 
 public interface OrderService {
 
-    CheckoutResponse placeOrder(UUID userId);
+    CheckoutResponse placeOrder(String email);
 
-    @Transactional(readOnly = true)
-    List<OrderResponse> getUserOrders(UUID userId);
+    List<OrderResponse> getUserOrders(String email);
 
-    @Transactional(readOnly = true)
-    OrderResponse getOrderDetail(UUID orderId);
+    OrderResponse getOrderDetail(UUID orderId, String email);
 }

@@ -29,58 +29,51 @@ import java.util.UUID;
 @Transactional
 public class CartServiceImpl implements CartService {
 
+    private final UserRepository userRepository;
     private final CartRepository cartRepository;
     private final CartItemRepository cartItemRepository;
-    private final UserRepository userRepository;
     private final VariantRepository variantRepository;
 
     @Override
-    public void addToCart(UUID userId, UUID variantId, Integer quantity) {
+    public void addToCart(String email, UUID variantId, Integer quantity) {
 
         if (quantity <= 0) {
             throw new BadRequestException("Quantity must be greater than 0");
         }
 
-        // ambil user
-        User user = userRepository.findById(userId)
+        User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new DataNotFoundException("User not found"));
 
-        // ambil variant
         Variant variant = variantRepository.findById(variantId)
                 .orElseThrow(() -> new DataNotFoundException("Variant not found"));
 
-        // cek stockr
         if (quantity > variant.getStock()) {
-            throw new DataNotFoundException("Stock not enough");
+            throw new BadRequestException("Stock not enough");
         }
 
-        // ambil / create cart
-        Cart cart = cartRepository.findByUserId(userId)
+        Cart cart = cartRepository.findByUserId(user.getId())
                 .orElseGet(() -> {
                     Cart newCart = new Cart();
                     newCart.setUser(user);
                     return cartRepository.save(newCart);
                 });
 
-        // cek apakah variant sudah ada di cart
         Optional<CartItem> existingItem = cart.getItems().stream()
                 .filter(item -> item.getVariant().getId().equals(variantId))
                 .findFirst();
 
         if (existingItem.isPresent()) {
-            // 🔥 merge quantity
             CartItem item = existingItem.get();
 
             int newQty = item.getQuantity() + quantity;
 
             if (newQty > variant.getStock()) {
-                throw new DataNotFoundException("Stock not enough");
+                throw new BadRequestException("Stock not enough");
             }
 
             item.setQuantity(newQty);
 
         } else {
-            // 🔥 create new item
             CartItem newItem = new CartItem();
             newItem.setCart(cart);
             newItem.setVariant(variant);
@@ -89,19 +82,20 @@ public class CartServiceImpl implements CartService {
             cart.getItems().add(newItem);
         }
 
-        // save
         cartRepository.save(cart);
     }
 
     @Transactional(readOnly = true)
     @Override
-    public CartResponse getCart(UUID userId) {
+    public CartResponse getCart(String email) {
 
-        Cart cart = cartRepository.findByUserId(userId)
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new DataNotFoundException("User not found"));
+
+        Cart cart = cartRepository.findByUserId(user.getId())
                 .orElseThrow(() -> new DataNotFoundException("Cart not found"));
 
         List<CartItemResponse> itemResponses = new ArrayList<>();
-
         BigDecimal total = BigDecimal.ZERO;
 
         for (CartItem item : cart.getItems()) {
@@ -123,20 +117,19 @@ public class CartServiceImpl implements CartService {
             );
 
             itemResponses.add(response);
-
             total = total.add(subtotal);
         }
 
         return new CartResponse(
                 cart.getId(),
-                cart.getUser().getId(),
+                user.getId(),
                 itemResponses,
                 total
         );
     }
 
     @Override
-    public void updateQuantity(UUID cartItemId, Integer quantity) {
+    public void updateQuantity(UUID cartItemId, Integer quantity, String email) {
 
         if (quantity < 0) {
             throw new BadRequestException("Quantity cannot be negative");
@@ -145,36 +138,48 @@ public class CartServiceImpl implements CartService {
         CartItem item = cartItemRepository.findById(cartItemId)
                 .orElseThrow(() -> new DataNotFoundException("Cart item not found"));
 
+        // 🔥 VALIDASI OWNER
+        if (!item.getCart().getUser().getEmail().equals(email)) {
+            throw new UnauthorizedException("You don't have access to this cart item");
+        }
+
         Variant variant = item.getVariant();
 
         if (quantity == 0) {
-            // delete kalau 0
             item.getCart().getItems().remove(item);
             cartItemRepository.delete(item);
             return;
         }
 
         if (quantity > variant.getStock()) {
-            throw new DataNotFoundException("Stock not enough");
+            throw new BadRequestException("Stock not enough");
         }
 
         item.setQuantity(quantity);
     }
 
     @Override
-    public void removeItem(UUID cartItemId) {
+    public void removeItem(UUID cartItemId, String email) {
 
         CartItem item = cartItemRepository.findById(cartItemId)
                 .orElseThrow(() -> new DataNotFoundException("Cart item not found"));
 
-        item.getCart().getItems().remove(item);
+        // 🔥 VALIDASI OWNER
+        if (!item.getCart().getUser().getEmail().equals(email)) {
+            throw new UnauthorizedException("You don't have access to this cart item");
+        }
 
+        item.getCart().getItems().remove(item);
         cartItemRepository.delete(item);
     }
 
     @Override
-    public void clearCart(UUID userId) {
-        Cart cart = cartRepository.findByUserId(userId)
+    public void clearCart(String email) {
+
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new DataNotFoundException("User not found"));
+
+        Cart cart = cartRepository.findByUserId(user.getId())
                 .orElseThrow(() -> new DataNotFoundException("Cart not found"));
 
         cart.getItems().clear();

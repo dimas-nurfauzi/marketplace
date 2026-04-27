@@ -5,8 +5,12 @@ import com.dims.marketplace.dto.enums.OrderStatus;
 import com.dims.marketplace.dto.mapper.OrderMapper;
 import com.dims.marketplace.dto.order.response.OrderResponse;
 import com.dims.marketplace.entity.*;
+import com.dims.marketplace.exceptions.BadRequestException;
+import com.dims.marketplace.exceptions.DataNotFoundException;
+import com.dims.marketplace.exceptions.UnauthorizedException;
 import com.dims.marketplace.repository.CartRepository;
 import com.dims.marketplace.repository.OrderRepository;
+import com.dims.marketplace.repository.UserRepository;
 import com.dims.marketplace.service.inter.OrderService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -24,19 +28,23 @@ public class OrderServiceImpl implements OrderService {
 
     private final CartRepository cartRepository;
     private final OrderRepository orderRepository;
+    private final UserRepository userRepository;
 
     @Override
-    public CheckoutResponse placeOrder(UUID userId) {
+    public CheckoutResponse placeOrder(String email) {
 
-        Cart cart = cartRepository.findByUserId(userId)
-                .orElseThrow(() -> new RuntimeException("Cart not found"));
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new DataNotFoundException("User not found"));
+
+        Cart cart = cartRepository.findByUserId(user.getId())
+                .orElseThrow(() -> new DataNotFoundException("Cart not found"));
 
         if (cart.getItems().isEmpty()) {
-            throw new RuntimeException("Cart is empty");
+            throw new BadRequestException("Cart is empty");
         }
 
         Order order = new Order();
-        order.setUser(cart.getUser());
+        order.setUser(user);
         order.setStatus(OrderStatus.PENDING);
 
         List<OrderItem> orderItems = new ArrayList<>();
@@ -47,7 +55,7 @@ public class OrderServiceImpl implements OrderService {
             Variant v = cartItem.getVariant();
 
             if (cartItem.getQuantity() > v.getStock()) {
-                throw new RuntimeException("Stock not enough");
+                throw new BadRequestException("Stock not enough");
             }
 
             BigDecimal price = v.getPrice();
@@ -66,7 +74,6 @@ public class OrderServiceImpl implements OrderService {
             orderItems.add(oi);
             total = total.add(subtotal);
 
-            // reduce stock
             v.setStock(v.getStock() - qty);
         }
 
@@ -75,7 +82,6 @@ public class OrderServiceImpl implements OrderService {
 
         orderRepository.save(order);
 
-        // clear cart
         cart.getItems().clear();
 
         return new CheckoutResponse(order.getId(), total, order.getStatus().name());
@@ -83,9 +89,12 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<OrderResponse> getUserOrders(UUID userId) {
+    public List<OrderResponse> getUserOrders(String email) {
 
-        List<Order> orders = orderRepository.findByUserIdOrderByCreatedAtDesc(userId);
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new DataNotFoundException("User not found"));
+
+        List<Order> orders = orderRepository.findByUserIdOrderByCreatedAtDesc(user.getId());
 
         return orders.stream()
                 .map(OrderMapper::toResponse)
@@ -94,10 +103,15 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     @Transactional(readOnly = true)
-    public OrderResponse getOrderDetail(UUID orderId) {
+    public OrderResponse getOrderDetail(UUID orderId, String email) {
 
         Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new RuntimeException("Order not found"));
+                .orElseThrow(() -> new DataNotFoundException("Order not found"));
+
+        // VALIDASI OWNER
+        if (!order.getUser().getEmail().equals(email)) {
+            throw new UnauthorizedException("You don't have access to this order");
+        }
 
         return OrderMapper.toResponse(order);
     }

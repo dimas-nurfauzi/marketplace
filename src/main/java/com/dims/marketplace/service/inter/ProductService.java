@@ -14,7 +14,7 @@ import java.util.List;
 import java.util.UUID;
 
 public interface ProductService {
-    Product createProduct(ProductRequest request);
+    Product createProduct(ProductRequest request, String authenticatedEmail);
 
     Product updateProduct(UUID id, UpdateProductRequest request);
 
